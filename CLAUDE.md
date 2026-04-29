@@ -25,6 +25,15 @@ python3 -m http.server 8080
 
 新バージョンを作るときは `v9.html` をコピーして `v10.html` などと命名する（上書きしない）。
 
+### GitHubへのpush
+
+ローカルのgit remoteはプロキシ経由のため、直接pushすると403エラーになる。`GH_TOKEN` 環境変数を使ってremote URLを書き換えてからpushする。
+
+```bash
+git remote set-url origin "https://n-kobo:${GH_TOKEN}@github.com/n-kobo/kayoi-kujira-uta.git"
+git push -u origin <branch-name>
+```
+
 ## アーキテクチャ
 
 ### ファイル構造（1ファイル完結）
