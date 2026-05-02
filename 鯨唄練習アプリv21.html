@@ -464,9 +464,11 @@ function drawScroll(currentMyFreq){
       ctx.strokeStyle='#fff';ctx.lineWidth=2.5;
       ctx.beginPath();ctx.arc(curX,smoothTY,13,0,Math.PI*2);ctx.stroke();
       ctx.shadowBlur=0;
+
     }
   }else{
     smoothTY=null;
+
   }
 
   // 自分の現在〇
@@ -481,10 +483,11 @@ function drawScroll(currentMyFreq){
       ctx.strokeStyle='#fff';ctx.lineWidth=2.5;
       ctx.beginPath();ctx.arc(curX,smoothMY,13,0,Math.PI*2);ctx.stroke();
       ctx.shadowBlur=0;
+
     }
   }else{
     smoothMY=null;
-    if(!isRecording)
+
   }
 
   // 歌詞描画（下段 - showLyricsがtrueのときのみ）
@@ -562,6 +565,7 @@ function updateLoop(){
     recentMyPitch=validFreq;
     document.getElementById('pitchVal').textContent=Math.round(validFreq);
     document.getElementById('pitchBar').style.width=Math.min(Math.max((validFreq-teacherMinF)/(teacherMaxF-teacherMinF)*100,0),100)+'%';
+
   }else{
     setTimeout(()=>{if(!isRecording||!recentMyPitch)recentMyPitch=null;},400);
   }
