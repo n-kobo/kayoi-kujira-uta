@@ -1,16 +1,43 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0042)https://n-kobo.github.io/kayoi-kujira-uta/ -->
+<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>鯨唄 練習アプリ</title>
+<title>通鯨唄おけいこアプリ</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:system-ui,sans-serif;background:#f5f4f0;color:#2c2c2a;min-height:100vh;padding:0.75rem;}
 .app{max-width:640px;margin:0 auto;}
 .header{text-align:center;margin-bottom:1rem;padding-top:0.5rem;}
-.title{font-size:22px;font-weight:500;}
-.subtitle{font-size:13px;color:#5f5e5a;margin-top:4px;}
+.title-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:flex-end;max-width:640px;margin:0 auto;}
+.title{font-size:22px;font-weight:500;text-align:center;}
+.title-ruby{font-size:22px;}
+.title-ruby rt{font-size:11px;}
+.title-hozonkai{font-size:13px;color:#5f5e5a;font-weight:500;white-space:nowrap;padding-bottom:2px;text-align:left;grid-column:3;padding-left:8px;align-self:flex-end;}
+.otemoto-row{display:flex;align-items:baseline;margin-bottom:8px;}
+.hozonkai-inline{font-size:13px;color:#5f5e5a;font-weight:500;white-space:nowrap;}
+/* スマホではカッコ書き表記に切り替え */
+@media(max-width:480px){
+  .title-ruby{ruby-position:unset;}
+  .title-ruby rt{display:none;}
+  .title-ruby::after{content:'（かよい）';font-size:14px;font-weight:400;color:#5f5e5a;}
+}
+.iwaimedelta-label{
+  text-align:center;
+  font-size:32px;
+  font-weight:700;
+  color:#c8a000;
+  letter-spacing:0.12em;
+  padding:10px 0 6px;
+  text-shadow:0 1px 3px rgba(0,0,0,0.12);
+}
+.footer-credit{
+  text-align:center;
+  font-size:14px;
+  color:#5f5e5a;
+  padding:14px 0 10px;
+  letter-spacing:0.06em;
+}
 .card{background:#fff;border:0.5px solid #d3d1c7;border-radius:12px;padding:0.875rem 1rem;margin-bottom:0.875rem;}
 .section-label{font-size:13px;color:#5f5e5a;margin-bottom:8px;font-weight:500;}
 audio{width:100%;height:36px;}
@@ -83,25 +110,28 @@ canvas#scrollCanvas{display:block;width:100%;}
 <body>
 <div class="app">
   <div class="header">
-    <div class="title">🐋 鯨唄 練習アプリ</div>
-    <div class="subtitle">祝いめでた — 先生の節回しと流れるグラフで比較</div>
+    <div class="title">🐋 <ruby class="title-ruby">通<rt>かよい</rt></ruby>鯨唄おけいこアプリ</div>
   </div>
 
   <div class="card">
-    <div class="section-label">先生の手本</div>
-    <audio id="refAudio" controls></audio>
-    <div class="analyze-msg analyzing" id="analyzeMsg">読み込み中...</div>
+    <div class="otemoto-row">
+      <div class="section-label" style="margin:0;">先生のお手本</div>
+      <div class="hozonkai-inline">　通鯨唄保存会</div>
+    </div>
+    <audio id="refAudio" controls="" src="blob:https://n-kobo.github.io/c0ade83a-3249-49bc-847a-1a34cab98190"></audio>
+    <div class="analyze-msg analyzing" id="analyzeMsg">準備完了！ 再生または録音を始めてください ✓</div>
   </div>
 
   <div class="card">
     <div class="status-row">
       <div class="section-label" style="margin:0;">流れる比較グラフ</div>
-      <div><span class="status-dot dot-ready" id="statusDot"></span><span class="status-text" id="statusText">まずSTEP1を実行してください</span></div>
+      <div><span class="status-dot dot-done" id="statusDot"></span><span class="status-text" id="statusText">解析完了！録音を始めてください</span></div>
     </div>
+    <div class="iwaimedelta-label">祝いめでた</div>
     <div class="graph-outer">
-      <canvas id="scrollCanvas" height="200"></canvas>
+      <canvas id="scrollCanvas" height="510" width="1214"></canvas>
     </div>
-    <div class="time-disp" id="timeDisp">0:00 / 0:00</div>
+    <div class="time-disp" id="timeDisp">0:00 / 3:05</div>
     <div class="graph-legend">
       <div class="legend-item"><div class="legend-dot" style="background:#fbbf24;"></div>先生（黄色）</div>
       <div class="legend-item"><div class="legend-dot" style="background:#60a5fa;"></div>自分（水色）</div>
@@ -112,10 +142,10 @@ canvas#scrollCanvas{display:block;width:100%;}
       <div class="match-pct" id="matchPct">--</div>
     </div>
     <div class="controls" style="margin-top:10px;">
-      <button class="btn btn-play" id="btnPlay" onclick="startPlayback()" disabled>▶ 再生</button>
-      <button class="btn btn-record" id="btnRecord" onclick="startRecording()" disabled>● 録音</button>
-      <button class="btn btn-stop" id="btnStop" onclick="stopAll()" disabled>■ 停止</button>
-      <button class="btn btn-score" id="btnScore" onclick="showScore()" disabled>採点する</button>
+      <button class="btn btn-play" id="btnPlay" onclick="startPlayback()">▶ 再生</button>
+      <button class="btn btn-record" id="btnRecord" onclick="startRecording()">● 録音</button>
+      <button class="btn btn-stop" id="btnStop" onclick="stopAll()" disabled="">■ 停止</button>
+      <button class="btn btn-score" id="btnScore" onclick="showScore()" disabled="">採点する</button>
     </div>
     <div class="seek-row">
       <button class="btn btn-reset btn-seek" onclick="resetAll()">⟳ リセット</button>
@@ -126,7 +156,7 @@ canvas#scrollCanvas{display:block;width:100%;}
     </div>
     <div class="seek-row" id="myVoiceRow" style="display:none;">
       <button class="btn btn-seek" id="btnMyVoice" onclick="playMyVoice()">🎤 自分の声を再生</button>
-      <button class="btn btn-seek" id="btnStopMyVoice" onclick="stopMyVoice()" disabled>■ 再生停止</button>
+      <button class="btn btn-seek" id="btnStopMyVoice" onclick="stopMyVoice()" disabled="">■ 再生停止</button>
     </div>
   </div>
 
@@ -167,6 +197,8 @@ canvas#scrollCanvas{display:block;width:100%;}
     <div class="section-label">練習記録</div>
     <div id="historyList"><div class="empty">まだ記録がありません</div></div>
   </div>
+
+  <div class="footer-credit">長門郷土文化研究会</div>
 </div>
 
 <script>
@@ -776,5 +808,6 @@ function showScore(){
 
 getCanvas();
 </script>
-</body>
-</html>
+
+
+</body></html>
