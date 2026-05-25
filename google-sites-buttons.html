@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>長門郷土文化研究会 ナビゲーションボタン</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "游明朝", Georgia, serif;
+    background: #f5f3ef;
+    padding: 40px 20px;
+  }
+
+  .nav-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .nav-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px 28px;
+    background: #fff;
+    border: 1px solid #c8dde3;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #1a4a5a;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    min-height: 140px;
+    box-shadow: 0 2px 8px rgba(44, 100, 120, 0.08);
+  }
+
+  .nav-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #2d7a8a, #4aa8be);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+    transform-origin: left;
+  }
+
+  .nav-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #2d7a8a 0%, #1a5568 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 0;
+  }
+
+  .nav-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 28px rgba(44, 100, 120, 0.22);
+    border-color: #2d7a8a;
+  }
+
+  .nav-card:hover::before {
+    transform: scaleX(1);
+  }
+
+  .nav-card:hover::after {
+    opacity: 1;
+  }
+
+  .nav-card:hover .card-icon,
+  .nav-card:hover .card-title,
+  .nav-card:hover .card-sub {
+    color: #fff;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card-icon {
+    font-size: 2.2rem;
+    margin-bottom: 12px;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+    transition: color 0.3s ease;
+  }
+
+  .card-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-align: center;
+    line-height: 1.5;
+    position: relative;
+    z-index: 1;
+    transition: color 0.3s ease;
+    color: #1a4a5a;
+  }
+
+  .card-sub {
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    margin-top: 6px;
+    opacity: 0.7;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+    transition: color 0.3s ease;
+    color: #4a7a8a;
+  }
+
+  /* 個別カラーアクセント（ホバー前の上部ライン） */
+  .nav-card[data-color="topics"]   { --accent: #e07b3a; }
+  .nav-card[data-color="search"]   { --accent: #3a7be0; }
+  .nav-card[data-color="learn"]    { --accent: #3aae7a; }
+  .nav-card[data-color="about"]    { --accent: #9b5de5; }
+  .nav-card[data-color="history"]  { --accent: #d4a017; }
+  .nav-card[data-color="video"]    { --accent: #e03a5a; }
+  .nav-card[data-color="publish"]  { --accent: #2d7a8a; }
+  .nav-card[data-color="usage"]    { --accent: #5a8a4a; }
+
+  .nav-card[data-color="topics"]::before  { background: linear-gradient(90deg, #e07b3a, #f0a060); }
+  .nav-card[data-color="search"]::before  { background: linear-gradient(90deg, #3a7be0, #60a0f0); }
+  .nav-card[data-color="learn"]::before   { background: linear-gradient(90deg, #3aae7a, #60d8a0); }
+  .nav-card[data-color="about"]::before   { background: linear-gradient(90deg, #9b5de5, #bb80ff); }
+  .nav-card[data-color="history"]::before { background: linear-gradient(90deg, #d4a017, #f0c030); }
+  .nav-card[data-color="video"]::before   { background: linear-gradient(90deg, #e03a5a, #f06080); }
+  .nav-card[data-color="publish"]::before { background: linear-gradient(90deg, #2d7a8a, #4aa8be); }
+  .nav-card[data-color="usage"]::before   { background: linear-gradient(90deg, #5a8a4a, #80b060); }
+
+  @media (max-width: 640px) {
+    .nav-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .nav-card {
+      padding: 24px 12px 20px;
+      min-height: 120px;
+    }
+    .card-icon { font-size: 1.8rem; }
+    .card-title { font-size: 0.92rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="nav-grid">
+
+  <a class="nav-card" href="#topics" data-color="topics">
+    <div class="card-icon">📰</div>
+    <div class="card-title">今注目の話題</div>
+    <div class="card-sub">Topics</div>
+  </a>
+
+  <a class="nav-card" href="#search" data-color="search">
+    <div class="card-icon">🔍</div>
+    <div class="card-title">さがす・調べる</div>
+    <div class="card-sub">Search &amp; Research</div>
+  </a>
+
+  <a class="nav-card" href="#learn" data-color="learn">
+    <div class="card-icon">🌿</div>
+    <div class="card-title">体験する・学ぶ</div>
+    <div class="card-sub">Experience &amp; Learn</div>
+  </a>
+
+  <a class="nav-card" href="#about" data-color="about">
+    <div class="card-icon">🏛️</div>
+    <div class="card-title">会について</div>
+    <div class="card-sub">About Us</div>
+  </a>
+
+  <a class="nav-card" href="#history" data-color="history">
+    <div class="card-icon">📜</div>
+    <div class="card-title">目的・会の歩み</div>
+    <div class="card-sub">Purpose &amp; History</div>
+  </a>
+
+  <a class="nav-card" href="#video" data-color="video">
+    <div class="card-icon">🎬</div>
+    <div class="card-title">動画</div>
+    <div class="card-sub">Video</div>
+  </a>
+
+  <a class="nav-card" href="#publish" data-color="publish">
+    <div class="card-icon">📚</div>
+    <div class="card-title">出版物の紹介</div>
+    <div class="card-sub">Publications</div>
+  </a>
+
+  <a class="nav-card" href="#usage" data-color="usage">
+    <div class="card-icon">ℹ️</div>
+    <div class="card-title">このサイトの<br>利用について</div>
+    <div class="card-sub">Site Usage</div>
+  </a>
+
+</div>
+
+</body>
+</html>
