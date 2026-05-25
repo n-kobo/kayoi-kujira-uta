@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIエージェント入門</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Noto Sans JP", "Hiragino Sans", "Meiryo", sans-serif;
+    background: #1a1a2e;
+  }
+
+  /* ===== スライド共通 ===== */
+  .slide {
+    width: 1280px;
+    height: 720px;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ===== スライド1 ===== */
+  .slide1 {
+    background: linear-gradient(135deg, #0f3460 0%, #16213e 60%, #0f3460 100%);
+    color: #fff;
+    padding: 60px 80px;
+    justify-content: space-between;
+  }
+
+  .slide1 .label {
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    color: #64b5f6;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .slide1 h1 {
+    font-size: 3rem;
+    font-weight: 900;
+    line-height: 1.2;
+    margin-bottom: 10px;
+  }
+
+  .slide1 h1 span { color: #4fc3f7; }
+
+  .slide1 .subtitle {
+    font-size: 1.1rem;
+    color: #b0bec5;
+    margin-bottom: 48px;
+  }
+
+  .compare-row {
+    display: flex;
+    gap: 32px;
+    flex: 1;
+    align-items: stretch;
+    margin-bottom: 32px;
+  }
+
+  .compare-box {
+    flex: 1;
+    border-radius: 16px;
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .compare-box.old {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+
+  .compare-box.new {
+    background: linear-gradient(135deg, rgba(79,195,247,0.15), rgba(100,181,246,0.1));
+    border: 1px solid rgba(79,195,247,0.4);
+  }
+
+  .compare-box .era {
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .compare-box.old .era { color: #90a4ae; }
+  .compare-box.new .era { color: #4fc3f7; }
+
+  .compare-box .name {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .compare-box.old .name { color: #cfd8dc; }
+  .compare-box.new .name { color: #fff; }
+
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .flow-step {
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .compare-box.old .flow-step {
+    background: rgba(255,255,255,0.1);
+    color: #cfd8dc;
+  }
+
+  .compare-box.new .flow-step {
+    background: rgba(79,195,247,0.25);
+    color: #e1f5fe;
+  }
+
+  .flow-step.highlight {
+    background: #4fc3f7;
+    color: #0d2137;
+  }
+
+  .arrow {
+    color: #546e7a;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .compare-box.new .arrow { color: #4fc3f7; }
+
+  .compare-box .desc {
+    font-size: 0.82rem;
+    color: #90a4ae;
+    margin-top: 4px;
+    line-height: 1.6;
+  }
+
+  .compare-box.new .desc { color: #b3e5fc; }
+
+  .vs-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: #546e7a;
+  }
+
+  .slide1 .bottom-note {
+    font-size: 0.8rem;
+    color: #546e7a;
+    text-align: right;
+  }
+
+  /* ===== スライド2 ===== */
+  .slide2 {
+    background: #f8f9fa;
+    color: #1a1a2e;
+    padding: 50px 80px;
+  }
+
+  .slide2 .top-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+
+  .slide2 .top-bar .tag {
+    background: #0f3460;
+    color: #4fc3f7;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    padding: 6px 16px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .slide2 h2 {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #0f3460;
+  }
+
+  .slide2 h2 span { color: #0288d1; }
+
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 36px;
+  }
+
+  .tl-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .tl-left {
+    width: 200px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding-right: 24px;
+    justify-content: center;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .tl-year {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #546e7a;
+  }
+
+  .tl-center {
+    width: 40px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .tl-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-top: 16px;
+    flex-shrink: 0;
+  }
+
+  .tl-line {
+    width: 2px;
+    flex: 1;
+    background: #cfd8dc;
+  }
+
+  .tl-content {
+    flex: 1;
+    padding: 12px 0 12px 24px;
+  }
+
+  .tl-content .title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .tl-content .body {
+    font-size: 0.82rem;
+    color: #546e7a;
+    line-height: 1.5;
+  }
+
+  .tl-row.step1 .tl-dot { background: #90a4ae; }
+  .tl-row.step2 .tl-dot { background: #42a5f5; }
+  .tl-row.step3 .tl-dot { background: #0288d1; }
+  .tl-row.step4 .tl-dot { background: #0f3460; }
+
+  .tl-row.step4 .tl-content .title { color: #0288d1; font-size: 1.1rem; }
+
+  .experience-box {
+    background: linear-gradient(135deg, #0f3460, #0d47a1);
+    color: #fff;
+    border-radius: 16px;
+    padding: 24px 36px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+
+  .experience-box .icon { font-size: 2.5rem; }
+
+  .experience-box .text .main {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .experience-box .text .sub {
+    font-size: 0.82rem;
+    color: #90caf9;
+    line-height: 1.6;
+  }
+
+  .experience-box .chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .chip {
+    background: rgba(79,195,247,0.2);
+    border: 1px solid rgba(79,195,247,0.4);
+    color: #4fc3f7;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+
+  /* 印刷用 */
+  @media print {
+    body { background: white; }
+    .slide {
+      width: 297mm;
+      height: 167mm;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== スライド1 ===== -->
+<div class="slide slide1">
+  <div>
+    <div class="label">AI Agent 入門</div>
+    <h1>「情報エージェント」と<br><span>「AIエージェント」</span>は何が違う？</h1>
+    <div class="subtitle">同じ「エージェント」でも、できることがまったく違います</div>
+  </div>
+
+  <div class="compare-row">
+
+    <div class="compare-box old">
+      <div class="era">〜2020年代前半　日本でよく聞く</div>
+      <div class="name">情報エージェント</div>
+      <div class="flow">
+        <div class="flow-step">調べる</div>
+        <div class="arrow">→</div>
+        <div class="flow-step">まとめる</div>
+        <div class="arrow">→</div>
+        <div class="flow-step">報告する</div>
+      </div>
+      <div class="desc">
+        人間がゴールを伝える<br>
+        → AIが情報を集めて答える<br>
+        → <strong style="color:#cfd8dc">実行はすべて人間がやる</strong>
+      </div>
+    </div>
+
+    <div class="vs-badge">VS</div>
+
+    <div class="compare-box new">
+      <div class="era">2024〜　世界で急速に普及中</div>
+      <div class="name">AIエージェント（Claude Code など）</div>
+      <div class="flow">
+        <div class="flow-step">調べる</div>
+        <div class="arrow">→</div>
+        <div class="flow-step">作る</div>
+        <div class="arrow">→</div>
+        <div class="flow-step">動かす</div>
+        <div class="arrow">→</div>
+        <div class="flow-step highlight">直す</div>
+      </div>
+      <div class="desc">
+        人間はゴールだけ伝える<br>
+        → AIが自分で考えて実行・修正まで行う<br>
+        → <strong style="color:#4fc3f7">人間の操作はほぼ不要</strong>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bottom-note">Slide 1 / 2</div>
+</div>
+
+<!-- ===== スライド2 ===== -->
+<div class="slide slide2">
+  <div class="top-bar">
+    <div class="tag">Real Case</div>
+    <h2>実際に体験した <span>AIエージェントの動き</span></h2>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-row step1">
+      <div class="tl-left"><div class="tl-year">Step 1</div></div>
+      <div class="tl-center"><div class="tl-dot"></div><div class="tl-line"></div></div>
+      <div class="tl-content">
+        <div class="title">「ボタンをおしゃれにしたい」とゴールだけ伝えた</div>
+        <div class="body">デザインの細かい指定なし。AIが自分でデザインを考えてHTMLファイルを作成・保存した</div>
+      </div>
+    </div>
+    <div class="tl-row step2">
+      <div class="tl-left"><div class="tl-year">Step 2</div></div>
+      <div class="tl-center"><div class="tl-dot"></div><div class="tl-line"></div></div>
+      <div class="tl-content">
+        <div class="title">問題が起きても自分で原因を調べて修正した</div>
+        <div class="body">「ジャンプしない」→ iframeの制限が原因と自己診断 → target属性とURLを自動修正</div>
+      </div>
+    </div>
+    <div class="tl-row step3">
+      <div class="tl-left"><div class="tl-year">Step 3</div></div>
+      <div class="tl-center"><div class="tl-dot"></div><div class="tl-line"></div></div>
+      <div class="tl-content">
+        <div class="title">修正のたびにGitHubへの保存まで自動で行った</div>
+        <div class="body">commit・push（インターネット上への保存）も自分で実行。人間の操作は不要</div>
+      </div>
+    </div>
+    <div class="tl-row step4">
+      <div class="tl-left"><div class="tl-year">結果</div></div>
+      <div class="tl-center"><div class="tl-dot"></div></div>
+      <div class="tl-content">
+        <div class="title">「できた　ありがと」で完了</div>
+        <div class="body">ゴールを伝えるだけ。途中の作業はすべてAIが担当した</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="experience-box">
+    <div class="icon">🌏</div>
+    <div class="text">
+      <div class="main">これが世界で今起きていること</div>
+      <div class="sub">
+        日本では「情報エージェント」という言葉が定着しているが、世界では「AIエージェント」として<br>
+        情報収集を超えた「実行・修正・完結」まで行うAIが2024〜2025年に急速に実用化されている
+      </div>
+      <div class="chips">
+        <div class="chip">Claude Code</div>
+        <div class="chip">OpenAI Operator</div>
+        <div class="chip">Google AI Agent</div>
+        <div class="chip">自律実行</div>
+        <div class="chip">人間はゴールだけ</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:right; font-size:0.75rem; color:#b0bec5; margin-top:12px;">Slide 2 / 2</div>
+</div>
+
+</body>
+</html>
