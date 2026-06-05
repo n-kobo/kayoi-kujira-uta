@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>山口県 熊出没マップ（YPくまっぷ）</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; background: #1a1a1a; color: #eee; height: 100dvh; display: flex; flex-direction: column; }
+
+#header {
+  background: #1a2a1a;
+  border-bottom: 2px solid #3a5a3a;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  z-index: 1000;
+}
+#header h1 { font-size: 1rem; color: #8fbc8f; white-space: nowrap; }
+#header h1 span { font-size: 1.4rem; margin-right: 4px; }
+
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; flex: 1; }
+
+select, button, label.btn {
+  background: #2a3a2a;
+  color: #ccc;
+  border: 1px solid #4a6a4a;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+select:hover, button:hover, label.btn:hover { background: #3a5a3a; }
+select option { background: #1a2a1a; }
+
+#count-badge {
+  background: #4a7a4a;
+  color: #fff;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+#map { flex: 1; }
+
+#panel {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #1a2a1a;
+  border-top: 2px solid #3a5a3a;
+  padding: 10px 16px;
+  max-height: 38vh;
+  overflow-y: auto;
+  z-index: 2000;
+  display: none;
+}
+#panel.open { display: block; }
+#panel h2 { font-size: 0.95rem; color: #8fbc8f; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+#panel table { width: 100%; font-size: 0.82rem; border-collapse: collapse; }
+#panel td { padding: 3px 8px; border-bottom: 1px solid #2a3a2a; vertical-align: top; }
+#panel td:first-child { color: #8fbc8f; white-space: nowrap; font-weight: bold; min-width: 80px; }
+#close-panel { background: #3a5a3a; border: none; color: #ccc; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+
+#toast {
+  position: fixed;
+  top: 60px; left: 50%; transform: translateX(-50%);
+  background: #2a4a2a;
+  border: 1px solid #4a8a4a;
+  color: #aed6ae;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  z-index: 3000;
+  display: none;
+  max-width: 90vw;
+  text-align: center;
+}
+
+.legend {
+  background: rgba(20,35,20,0.92);
+  border: 1px solid #3a5a3a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  line-height: 1.8;
+}
+.legend-dot {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+/* ローカルモード表示 */
+#data-source-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #3a3a1a;
+  color: #cc9;
+  border: 1px solid #6a6a2a;
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1><span>🐻</span>山口県 熊出没マップ</h1>
+  <div class="controls">
+    <select id="year-sel" title="年度">
+      <option value="all">全年度</option>
+      <option value="2026">2026年</option>
+      <option value="2025">2025年</option>
+      <option value="2024">2024年</option>
+      <option value="2023">2023年</option>
+    </select>
+    <select id="month-sel" title="月">
+      <option value="all">全月</option>
+      <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+      <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+      <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+      <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+    </select>
+    <select id="type-sel" title="種別">
+      <option value="all">全種別</option>
+      <option value="目撃">目撃</option>
+      <option value="痕跡">痕跡</option>
+    </select>
+    <label class="btn" title="CSVファイルを読み込む（YPくまっぷからダウンロードしたCSV）">
+      📂 CSV読込
+      <input type="file" id="csv-input" accept=".csv" style="display:none">
+    </label>
+    <button id="fetch-btn" title="山口県オープンデータからデータを取得">🌐 最新取得</button>
+    <span id="count-badge">0件</span>
+    <span id="data-source-badge">サンプルデータ</span>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<div id="panel">
+  <h2>
+    <span>📍 出没詳細</span>
+    <button id="close-panel">✕ 閉じる</button>
+  </h2>
+  <table id="detail-table"></table>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+// ============================================================
+// サンプルデータ（YPくまっぷと同じ形式）
+// 実際のデータは「CSV読込」または「最新取得」ボタンで読み込む
+// ============================================================
+const SAMPLE_DATA = [
+  {date:"2024-10-15",lat:34.5123,lng:131.3892,city:"萩市",type:"目撃",count:1,size:"中型",situation:"田んぼ付近で目撃"},
+  {date:"2024-10-18",lat:34.5211,lng:131.4012,city:"萩市",type:"痕跡",count:0,size:"",situation:"山林内に爪痕"},
+  {date:"2024-10-21",lat:34.4876,lng:131.4234,city:"萩市",type:"目撃",count:2,size:"大型",situation:"親子グマを目撃"},
+  {date:"2024-09-05",lat:34.4201,lng:131.1987,city:"長門市",type:"目撃",count:1,size:"中型",situation:"林道脇で目撃"},
+  {date:"2024-09-12",lat:34.4356,lng:131.2145,city:"長門市",type:"痕跡",count:0,size:"",situation:"笹薮に倒した跡"},
+  {date:"2024-10-03",lat:34.2134,lng:131.1567,city:"美祢市",type:"目撃",count:1,size:"小型",situation:"果樹園付近"},
+  {date:"2024-10-10",lat:34.2287,lng:131.1734,city:"美祢市",type:"目撃",count:1,size:"大型",situation:"道路横断"},
+  {date:"2024-10-28",lat:34.2054,lng:131.1423,city:"美祢市",type:"痕跡",count:0,size:"",situation:"蜂の巣が荒らされた"},
+  {date:"2024-08-20",lat:34.1987,lng:131.4756,city:"山口市",type:"目撃",count:1,size:"中型",situation:"山林縁部で目撃"},
+  {date:"2024-09-14",lat:34.2112,lng:131.5023,city:"山口市",type:"目撃",count:2,size:"中型",situation:"親子グマ　農道で目撃"},
+  {date:"2024-11-02",lat:34.1823,lng:131.4612,city:"山口市",type:"痕跡",count:0,size:"",situation:"シイ・ドングリ類が食べられた跡"},
+  {date:"2024-10-07",lat:34.1654,lng:131.9234,city:"周南市",type:"目撃",count:1,size:"中型",situation:"山林内で目撃"},
+  {date:"2024-10-19",lat:34.1789,lng:131.9012,city:"周南市",type:"目撃",count:1,size:"大型",situation:"柿畑付近"},
+  {date:"2024-11-05",lat:34.1534,lng:131.8897,city:"周南市",type:"痕跡",count:0,size:"",situation:"足跡を発見"},
+  {date:"2024-10-12",lat:34.1423,lng:132.0876,city:"岩国市",type:"目撃",count:1,size:"中型",situation:"農道で目撃"},
+  {date:"2024-10-25",lat:34.1567,lng:132.1023,city:"岩国市",type:"目撃",count:2,size:"小型",situation:"林道で親子グマ"},
+  {date:"2024-09-28",lat:34.1712,lng:132.0534,city:"岩国市",type:"痕跡",count:0,size:"",situation:"木の皮が剥がされた"},
+  {date:"2024-11-08",lat:34.0932,lng:131.2145,city:"宇部市",type:"目撃",count:1,size:"中型",situation:"山林縁部で目撃"},
+  {date:"2024-10-31",lat:34.0812,lng:131.1987,city:"宇部市",type:"痕跡",count:0,size:"",situation:"トウモロコシ畑被害"},
+  {date:"2024-09-20",lat:34.5023,lng:131.4356,city:"阿武町",type:"目撃",count:1,size:"大型",situation:"山林内で目撃"},
+  {date:"2024-09-30",lat:34.5187,lng:131.4512,city:"阿武町",type:"目撃",count:1,size:"中型",situation:"農地付近"},
+  {date:"2025-04-18",lat:34.4987,lng:131.3678,city:"萩市",type:"目撃",count:1,size:"中型",situation:"山林縁部で目撃（今年初）"},
+  {date:"2025-05-02",lat:34.2234,lng:131.1892,city:"美祢市",type:"目撃",count:2,size:"中型",situation:"親子グマを目撃"},
+  {date:"2025-05-15",lat:34.4123,lng:131.2034,city:"長門市",type:"痕跡",count:0,size:"",situation:"林道に足跡"},
+  {date:"2025-06-10",lat:34.1934,lng:131.4823,city:"山口市",type:"目撃",count:1,size:"大型",situation:"農道を横断"},
+  {date:"2025-07-03",lat:34.1623,lng:131.9112,city:"周南市",type:"目撃",count:1,size:"中型",situation:"柿畑付近で目撃"},
+  {date:"2025-08-20",lat:34.1478,lng:132.0712,city:"岩国市",type:"目撃",count:1,size:"中型",situation:"山林縁部"},
+  {date:"2025-09-05",lat:34.5234,lng:131.4089,city:"萩市",type:"目撃",count:3,size:"大型",situation:"群れを目撃（複数頭）"},
+  {date:"2025-10-12",lat:34.2378,lng:131.1623,city:"美祢市",type:"目撃",count:1,size:"中型",situation:"農地付近"},
+  {date:"2025-10-28",lat:34.4278,lng:131.1978,city:"長門市",type:"痕跡",count:0,size:"",situation:"養蜂場が荒らされた"},
+  {date:"2023-10-01",lat:34.4812,lng:131.3923,city:"萩市",type:"目撃",count:1,size:"中型",situation:"山林で目撃"},
+  {date:"2023-11-15",lat:34.2089,lng:131.1812,city:"美祢市",type:"目撃",count:2,size:"大型",situation:"親子グマ目撃"},
+  {date:"2023-09-22",lat:34.1834,lng:131.4634,city:"山口市",type:"痕跡",count:0,size:"",situation:"農作物被害"},
+];
+
+// ============================================================
+// Leafletマップ初期化
+// ============================================================
+const map = L.map('map').setView([34.25, 131.5], 9);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | データ: <a href="https://yamaguchi-opendata.jp/">山口県オープンデータ</a>（YPくまっぷ）',
+  maxZoom: 18
+}).addTo(map);
+
+// 凡例
+const legend = L.control({ position: 'bottomright' });
+legend.onAdd = () => {
+  const div = L.DomUtil.create('div', 'legend');
+  div.innerHTML = `
+    <b style="color:#8fbc8f">凡例</b><br>
+    <span class="legend-dot" style="background:#e74c3c"></span>目撃<br>
+    <span class="legend-dot" style="background:#e67e22"></span>痕跡<br>
+    <small style="color:#888">データ: YPくまっぷ<br>山口県警察オープンデータ</small>
+  `;
+  return div;
+};
+legend.addTo(map);
+
+// マーカークラスター
+let cluster = L.markerClusterGroup({ maxClusterRadius: 40 });
+map.addLayer(cluster);
+
+// ============================================================
+// データ管理
+// ============================================================
+let allData = [...SAMPLE_DATA];
+let isSample = true;
+
+function getIcon(type) {
+  const color = type === '目撃' ? '#e74c3c' : '#e67e22';
+  return L.divIcon({
+    html: `<svg width="24" height="24" viewBox="0 0 24 24">
+      <circle cx="12" cy="10" r="8" fill="${color}" stroke="white" stroke-width="2" opacity="0.9"/>
+      <text x="12" y="14" text-anchor="middle" font-size="10" fill="white">🐻</text>
+    </svg>`,
+    className: '',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+}
+
+function renderMarkers() {
+  cluster.clearLayers();
+
+  const year = document.getElementById('year-sel').value;
+  const month = document.getElementById('month-sel').value;
+  const type = document.getElementById('type-sel').value;
+
+  const filtered = allData.filter(d => {
+    if (!d.lat || !d.lng) return false;
+    const dt = new Date(d.date);
+    if (year !== 'all' && dt.getFullYear() !== parseInt(year)) return false;
+    if (month !== 'all' && (dt.getMonth() + 1) !== parseInt(month)) return false;
+    if (type !== 'all' && d.type !== type) return false;
+    return true;
+  });
+
+  filtered.forEach(d => {
+    const marker = L.marker([d.lat, d.lng], { icon: getIcon(d.type) });
+    marker.on('click', () => showDetail(d));
+    cluster.addLayer(marker);
+  });
+
+  document.getElementById('count-badge').textContent = `${filtered.length}件`;
+}
+
+function showDetail(d) {
+  const panel = document.getElementById('panel');
+  const tbl = document.getElementById('detail-table');
+  const rows = [
+    ['📅 日付', d.date],
+    ['🏙️ 市町村', d.city || '-'],
+    ['🐾 種別', d.type || '-'],
+    ['🐻 頭数', d.count > 0 ? `${d.count}頭` : '-'],
+    ['📏 体長', d.size || '-'],
+    ['📝 状況', d.situation || '-'],
+    ['📍 位置', `${d.lat?.toFixed(5)}, ${d.lng?.toFixed(5)}`],
+  ];
+  tbl.innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  panel.classList.add('open');
+}
+
+document.getElementById('close-panel').addEventListener('click', () => {
+  document.getElementById('panel').classList.remove('open');
+});
+
+['year-sel','month-sel','type-sel'].forEach(id => {
+  document.getElementById(id).addEventListener('change', renderMarkers);
+});
+
+// ============================================================
+// CSV読み込み
+// ============================================================
+document.getElementById('csv-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const parsed = parseCSV(ev.target.result);
+      if (parsed.length === 0) { showToast('データが見つかりません。', 3000); return; }
+      allData = parsed;
+      isSample = false;
+      document.getElementById('data-source-badge').textContent = `📁 ${file.name}`;
+      document.getElementById('data-source-badge').style.background = '#1a3a1a';
+      document.getElementById('data-source-badge').style.color = '#8fbc8f';
+      renderMarkers();
+      showToast(`✅ ${parsed.length}件 読み込みました`, 3000);
+    } catch(err) {
+      showToast('CSVの読み込みに失敗しました: ' + err.message, 4000);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+  e.target.value = '';
+});
+
+function parseCSV(text) {
+  // BOM除去
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+
+  // 列マッピング（YPくまっぷCSVの列名に対応）
+  const colMap = {
+    lat: findCol(headers, ['緯度','lat','latitude','Latitude']),
+    lng: findCol(headers, ['経度','lng','lon','longitude','Longitude']),
+    date: findCol(headers, ['日付','発見日','目撃日','date','Date','発見年月日','目撃年月日']),
+    city: findCol(headers, ['市町村','市区町村','city','City','場所','所在地']),
+    type: findCol(headers, ['種別','情報種別','目撃種別','type','Type','区分']),
+    count: findCol(headers, ['頭数','個体数','count','Count']),
+    size: findCol(headers, ['体長','サイズ','size','Size']),
+    situation: findCol(headers, ['状況','概要','備考','situation','description','内容']),
+  };
+
+  return lines.slice(1).map(line => {
+    const cols = splitCSVLine(line);
+    const get = key => colMap[key] >= 0 ? (cols[colMap[key]] || '').replace(/"/g, '').trim() : '';
+    return {
+      lat: parseFloat(get('lat')) || null,
+      lng: parseFloat(get('lng')) || null,
+      date: get('date'),
+      city: get('city'),
+      type: get('type') || '目撃',
+      count: parseInt(get('count')) || 0,
+      size: get('size'),
+      situation: get('situation'),
+    };
+  }).filter(d => d.lat && d.lng);
+}
+
+function findCol(headers, candidates) {
+  for (const c of candidates) {
+    const idx = headers.findIndex(h => h.includes(c));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function splitCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') { inQ = !inQ; }
+    else if (line[i] === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += line[i]; }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ============================================================
+// 最新データ取得（CKAN API）
+// ============================================================
+const CKAN_RESOURCES = [
+  { year: '2026', id: 'yp-2026' },
+  { year: '2025', id: '0305d966-f716-43fa-a4cf-78b0ed2c65a1' },
+  { year: '2024', id: '9565b85b-f459-4c0e-912d-e30578822e09' },
+  { year: '2023', id: '717fffbb-665f-48a1-9119-dcdb9921589f' },
+];
+
+document.getElementById('fetch-btn').addEventListener('click', async () => {
+  showToast('⏳ 山口県オープンデータから取得中...', 0);
+  let combined = [];
+  let success = 0;
+
+  for (const res of CKAN_RESOURCES) {
+    try {
+      const url = `https://yamaguchi-opendata.jp/ckan/api/3/action/datastore_search?resource_id=${res.id}&limit=5000`;
+      const r = await fetch(url, { mode: 'cors' });
+      if (!r.ok) continue;
+      const json = await r.json();
+      if (json.success && json.result && json.result.records) {
+        const records = json.result.records.map(rec => normalizeCKANRecord(rec));
+        combined = combined.concat(records.filter(d => d.lat && d.lng));
+        success++;
+      }
+    } catch(e) { /* CORS or network error */ }
+  }
+
+  if (combined.length > 0) {
+    allData = combined;
+    isSample = false;
+    document.getElementById('data-source-badge').textContent = `🌐 山口県オープンデータ`;
+    document.getElementById('data-source-badge').style.background = '#1a2a3a';
+    document.getElementById('data-source-badge').style.color = '#8faed6';
+    renderMarkers();
+    showToast(`✅ ${combined.length}件 取得しました（${success}年分）`, 4000);
+  } else {
+    hideToast();
+    // CORS制限の場合の案内
+    showToast(
+      'CORSのため直接取得できません。\n' +
+      '① yamaguchi-opendata.jp でCSVをダウンロード\n' +
+      '② 「📂 CSV読込」ボタンで読み込んでください',
+      8000
+    );
+  }
+});
+
+function normalizeCKANRecord(rec) {
+  // CKAN APIのフィールド名は実際のデータに依存する
+  // YPくまっぷの既知フィールド名に対応
+  const lat = parseFloat(rec['緯度'] || rec['latitude'] || rec['lat'] || 0);
+  const lng = parseFloat(rec['経度'] || rec['longitude'] || rec['lng'] || 0);
+  const date = rec['日付'] || rec['発見日'] || rec['目撃日'] || rec['date'] || '';
+  const city = rec['市町村'] || rec['市区町村'] || rec['city'] || '';
+  const type = rec['種別'] || rec['情報種別'] || rec['type'] || '目撃';
+  const count = parseInt(rec['頭数'] || rec['count'] || 0) || 0;
+  const size = rec['体長'] || rec['size'] || '';
+  const situation = rec['状況'] || rec['概要'] || rec['備考'] || rec['situation'] || '';
+  return { lat, lng, date, city, type, count, size, situation };
+}
+
+// ============================================================
+// Toast
+// ============================================================
+let toastTimer = null;
+function showToast(msg, ms) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  if (toastTimer) clearTimeout(toastTimer);
+  if (ms > 0) toastTimer = setTimeout(hideToast, ms);
+}
+function hideToast() {
+  document.getElementById('toast').style.display = 'none';
+}
+
+// ============================================================
+// 初期表示
+// ============================================================
+renderMarkers();
+showToast('サンプルデータを表示中。「🌐 最新取得」またはCSVファイルを読み込んでください。', 5000);
+</script>
+</body>
+</html>
