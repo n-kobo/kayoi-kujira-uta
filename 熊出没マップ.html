@@ -378,57 +378,111 @@ function splitCSVLine(line) {
 }
 
 // ============================================================
-// 最新データ取得（CKAN API）
+// YPくまっぷ リアルデータ取得
 // ============================================================
+const CKAN_BASE = 'https://yamaguchi-opendata.jp/ckan';
+
+// 各年度のリソースID（山口県警察オープンデータ）
 const CKAN_RESOURCES = [
-  { year: '2026', id: 'yp-2026' },
-  { year: '2025', id: '0305d966-f716-43fa-a4cf-78b0ed2c65a1' },
-  { year: '2024', id: '9565b85b-f459-4c0e-912d-e30578822e09' },
-  { year: '2023', id: '717fffbb-665f-48a1-9119-dcdb9921589f' },
+  { year: '2026', resourceId: null,  // 2026は直接ダウンロードURLのみ
+    dumpId: 'yp-2026' },
+  { year: '2025', resourceId: '0305d966-f716-43fa-a4cf-78b0ed2c65a1',
+    dumpId: '0305d966-f716-43fa-a4cf-78b0ed2c65a1' },
+  { year: '2024', resourceId: '9565b85b-f459-4c0e-912d-e30578822e09',
+    dumpId: '9565b85b-f459-4c0e-912d-e30578822e09' },
+  { year: '2023', resourceId: '717fffbb-665f-48a1-9119-dcdb9921589f',
+    dumpId: '717fffbb-665f-48a1-9119-dcdb9921589f' },
 ];
 
-document.getElementById('fetch-btn').addEventListener('click', async () => {
-  showToast('⏳ 山口県オープンデータから取得中...', 0);
+// 1リソースのCSVを取得してパース（datastore dump → JSON API の順で試行）
+async function fetchOneResource(res) {
+  // ① CKANのdatastoreダンプ（CSV形式）
+  try {
+    const url = `${CKAN_BASE}/datastore/dump/${res.dumpId}?bom=True`;
+    const r = await fetch(url);
+    if (r.ok) {
+      const text = await r.text();
+      const rows = parseCSV(text);
+      if (rows.length > 0) return rows;
+    }
+  } catch(e) {}
+
+  // ② CKAN JSON API
+  try {
+    const url = `${CKAN_BASE}/api/3/action/datastore_search?resource_id=${res.dumpId}&limit=5000`;
+    const r = await fetch(url);
+    if (r.ok) {
+      const json = await r.json();
+      if (json.success && json.result?.records?.length > 0) {
+        return json.result.records.map(normalizeCKANRecord).filter(d => d.lat && d.lng);
+      }
+    }
+  } catch(e) {}
+
+  return [];
+}
+
+async function fetchAllRealData() {
+  showToast('⏳ 山口県オープンデータ（YPくまっぷ）から取得中...', 0);
   let combined = [];
-  let success = 0;
+  let successYears = [];
 
   for (const res of CKAN_RESOURCES) {
-    try {
-      const url = `https://yamaguchi-opendata.jp/ckan/api/3/action/datastore_search?resource_id=${res.id}&limit=5000`;
-      const r = await fetch(url, { mode: 'cors' });
-      if (!r.ok) continue;
-      const json = await r.json();
-      if (json.success && json.result && json.result.records) {
-        const records = json.result.records.map(rec => normalizeCKANRecord(rec));
-        combined = combined.concat(records.filter(d => d.lat && d.lng));
-        success++;
-      }
-    } catch(e) { /* CORS or network error */ }
+    const rows = await fetchOneResource(res);
+    if (rows.length > 0) {
+      combined = combined.concat(rows);
+      successYears.push(res.year);
+    }
   }
 
   if (combined.length > 0) {
     allData = combined;
     isSample = false;
-    document.getElementById('data-source-badge').textContent = `🌐 山口県オープンデータ`;
-    document.getElementById('data-source-badge').style.background = '#1a2a3a';
-    document.getElementById('data-source-badge').style.color = '#8faed6';
+    const badge = document.getElementById('data-source-badge');
+    badge.textContent = `🌐 YPくまっぷ（${successYears.join('・')}年）`;
+    badge.style.background = '#1a2a3a';
+    badge.style.color = '#8faed6';
+    badge.style.borderColor = '#4a6a9a';
     renderMarkers();
-    showToast(`✅ ${combined.length}件 取得しました（${success}年分）`, 4000);
-  } else {
+    showToast(`✅ リアルデータ ${combined.length}件 取得完了（${successYears.join('・')}年分）`, 5000);
+    return true;
+  }
+  return false;
+}
+
+document.getElementById('fetch-btn').addEventListener('click', async () => {
+  const ok = await fetchAllRealData();
+  if (!ok) {
     hideToast();
-    // CORS制限の場合の案内
-    showToast(
-      'CORSのため直接取得できません。\n' +
-      '① yamaguchi-opendata.jp でCSVをダウンロード\n' +
-      '② 「📂 CSV読込」ボタンで読み込んでください',
-      8000
-    );
+    showDownloadGuide();
   }
 });
 
+function showDownloadGuide() {
+  const msg = document.createElement('div');
+  msg.style.cssText = `
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:#1a2a1a; border:2px solid #4a8a4a; border-radius:12px;
+    padding:20px 24px; z-index:9999; max-width:420px; width:90%;
+    color:#ccc; font-size:0.85rem; line-height:1.8;
+  `;
+  msg.innerHTML = `
+    <div style="font-size:1rem;color:#8fbc8f;font-weight:bold;margin-bottom:10px">
+      📥 CSVを手動でダウンロードしてください
+    </div>
+    <p>ネットワーク環境によりブラウザからの直接取得ができませんでした。</p>
+    <p style="margin-top:8px">以下からCSVをダウンロードし、「📂 CSV読込」ボタンで読み込んでください：</p>
+    <ul style="margin:10px 0 10px 16px">
+      <li><a href="https://yamaguchi-opendata.jp/ckan/dataset/2025" target="_blank" style="color:#8fbc8f">2025年データ（YPくまっぷ）</a></li>
+      <li><a href="https://yamaguchi-opendata.jp/ckan/dataset/2024" target="_blank" style="color:#8fbc8f">2024年データ（YPくまっぷ）</a></li>
+      <li><a href="https://yamaguchi-opendata.jp/ckan/dataset/bear2023" target="_blank" style="color:#8fbc8f">2023年データ（YPくまっぷ）</a></li>
+    </ul>
+    <button onclick="this.parentNode.remove()" style="background:#3a5a3a;border:none;color:#ccc;padding:6px 16px;border-radius:6px;cursor:pointer;margin-top:4px">閉じる</button>
+  `;
+  document.body.appendChild(msg);
+}
+
 function normalizeCKANRecord(rec) {
-  // CKAN APIのフィールド名は実際のデータに依存する
-  // YPくまっぷの既知フィールド名に対応
   const lat = parseFloat(rec['緯度'] || rec['latitude'] || rec['lat'] || 0);
   const lng = parseFloat(rec['経度'] || rec['longitude'] || rec['lng'] || 0);
   const date = rec['日付'] || rec['発見日'] || rec['目撃日'] || rec['date'] || '';
@@ -456,10 +510,19 @@ function hideToast() {
 }
 
 // ============================================================
-// 初期表示
+// 初期表示：まずリアルデータ取得を試みる
 // ============================================================
 renderMarkers();
-showToast('サンプルデータを表示中。「🌐 最新取得」またはCSVファイルを読み込んでください。', 5000);
+(async () => {
+  const ok = await fetchAllRealData();
+  if (!ok) {
+    // リアルデータ取得失敗 → サンプルデータで表示、案内を出す
+    showToast(
+      '🐻 サンプルデータで表示中。「🌐 最新取得」または「📂 CSV読込」でリアルデータを表示できます。',
+      7000
+    );
+  }
+})();
 </script>
 </body>
 </html>
