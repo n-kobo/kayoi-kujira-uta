@@ -149,6 +149,7 @@ button.active { background: #3a6a3a; border-color: #6aaa6a; color: #aef; }
       <option value="痕跡">痕跡</option>
     </select>
     <button id="heatmap-btn" title="ヒートマップ ON/OFF">🌡️ ヒートマップ</button>
+    <button id="predict-btn" title="今月±1か月の過去データから予測ヒートマップを表示">🔮 予測マップ</button>
     <button id="chart-btn" title="月別グラフを表示">📊 月別グラフ</button>
     <label class="btn">📂 CSV読込<input type="file" id="csv-input" accept=".csv" style="display:none"></label>
     <button id="fetch-btn">🌐 最新取得</button>
@@ -310,32 +311,121 @@ function renderMarkers() {
   });
   document.getElementById('count-badge').textContent = `${filtered.length}件`;
   updateHeatmap(filtered);
+  if (predictOn) buildPredictLayer();
   updateWarningBanner();
   if (document.getElementById('chart-panel').classList.contains('open')) drawChart();
 }
 
 // ============================================================
-// ヒートマップ（レベル2）
+// ヒートマップ（過去データ表示）
 // ============================================================
 function updateHeatmap(filtered) {
   if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
   if (!heatmapOn) return;
   const pts = filtered.map(d => [d.lat, d.lng, 1]);
   heatLayer = L.heatLayer(pts, {
-    radius: 30,
-    blur: 20,
-    maxZoom: 13,
+    radius: 30, blur: 20, maxZoom: 13,
     gradient: { 0.2: '#00f', 0.4: '#0ff', 0.6: '#0f0', 0.8: '#ff0', 1.0: '#f00' }
   });
   map.addLayer(heatLayer);
-  // ヒートマップ時はピンを半透明に
   cluster.setOpacity(heatmapOn ? 0.3 : 1);
 }
 
 document.getElementById('heatmap-btn').addEventListener('click', () => {
   heatmapOn = !heatmapOn;
+  if (heatmapOn) { predictOn = false; document.getElementById('predict-btn').classList.remove('active'); }
   document.getElementById('heatmap-btn').classList.toggle('active', heatmapOn);
   renderMarkers();
+});
+
+// ============================================================
+// 予測ヒートマップ（今月±1か月の過去実績から生成）
+// ============================================================
+let predictOn = false;
+let predictLayer = null;
+
+function buildPredictLayer() {
+  if (predictLayer) { map.removeLayer(predictLayer); predictLayer = null; }
+  if (!predictOn) return;
+
+  const now = new Date();
+  const thisMonth = now.getMonth() + 1; // 1-12
+  const thisYear  = now.getFullYear();
+
+  // 対象月：今月と前月（2か月分）
+  const m1 = thisMonth === 1 ? 12 : thisMonth - 1;
+  const m2 = thisMonth;
+
+  // 過去年（今年を除く）の同じ2か月のデータを抽出
+  const pts = [];
+  allData.forEach(d => {
+    const dt = new Date(d.date);
+    if (isNaN(dt)) return;
+    if (dt.getFullYear() >= thisYear) return; // 今年は除く
+    const m = dt.getMonth() + 1;
+    if (m !== m1 && m !== m2) return;
+    // 同じ場所が複数年で出ていれば重みを上げる
+    pts.push([d.lat, d.lng, 1]);
+  });
+
+  if (pts.length === 0) {
+    showToast('予測に使える過去データがありません。CSVを読み込んでください。', 4000);
+    predictOn = false;
+    document.getElementById('predict-btn').classList.remove('active');
+    return;
+  }
+
+  // 出没件数の多い場所ほど重く（同座標付近をカウント）
+  predictLayer = L.heatLayer(pts, {
+    radius: 35,
+    blur: 25,
+    maxZoom: 13,
+    gradient: { 0.0: 'rgba(0,0,255,0)', 0.3: '#0af', 0.5: '#0f0', 0.7: '#ff0', 1.0: '#f00' }
+  });
+  map.addLayer(predictLayer);
+
+  // ピンは非表示に（予測モード中は地図をすっきりさせる）
+  cluster.setOpacity(0.15);
+
+  // 説明ラベルを地図上に表示
+  showPredictInfo(pts.length, m1, m2, thisYear);
+}
+
+let predictInfoControl = null;
+function showPredictInfo(count, m1, m2, year) {
+  if (predictInfoControl) { map.removeControl(predictInfoControl); predictInfoControl = null; }
+  predictInfoControl = L.control({ position: 'topleft' });
+  predictInfoControl.onAdd = () => {
+    const d = L.DomUtil.create('div');
+    d.style.cssText = 'background:rgba(10,20,10,0.92);border:2px solid #e74c3c;border-radius:8px;padding:8px 12px;font-size:0.8rem;color:#eee;line-height:1.7;max-width:220px';
+    d.innerHTML = `
+      <b style="color:#ff8080">🔮 予測ヒートマップ</b><br>
+      <span style="color:#aaa">対象：${m1}月・${m2}月（2か月）<br>
+      過去データ ${count} 件をもとに生成<br>
+      <span style="color:#f88">赤</span>＝出没が多かったエリア<br>
+      <span style="color:#ff8">黄</span>＝やや多いエリア<br>
+      <span style="color:#8f8">緑</span>＝少ないエリア</span><br>
+      <span style="color:#888;font-size:0.72rem">※過去実績に基づく傾向予測</span>
+    `;
+    return d;
+  };
+  predictInfoControl.addTo(map);
+}
+
+document.getElementById('predict-btn').addEventListener('click', () => {
+  predictOn = !predictOn;
+  if (predictOn) {
+    // ヒートマップと排他
+    heatmapOn = false;
+    document.getElementById('heatmap-btn').classList.remove('active');
+    if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+  } else {
+    if (predictInfoControl) { map.removeControl(predictInfoControl); predictInfoControl = null; }
+    cluster.setOpacity(1);
+  }
+  document.getElementById('predict-btn').classList.toggle('active', predictOn);
+  buildPredictLayer();
+  if (!predictOn) renderMarkers();
 });
 
 // ============================================================
