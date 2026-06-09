@@ -530,65 +530,137 @@ document.getElementById('close-panel').addEventListener('click', () => {
 // ============================================================
 document.getElementById('csv-input').addEventListener('change', e => {
   const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
+
+  // Shift-JIS → UTF-8 変換を試みる（YPくまっぷCSVはShift-JIS）
+  // まずShift-JISで読み込み、失敗したらUTF-8にフォールバック
+  readCSVFile(file, 'Shift_JIS').then(text => {
+    // Shift-JISで文字化けしていないか確認（ヘッダーに「緯度」が含まれるか）
+    if (text.includes('緯度') || text.includes('latitude') || text.includes('Latitude')) {
+      return text;
+    }
+    // だめならUTF-8で再試行
+    return readCSVFile(file, 'UTF-8');
+  }).then(text => {
     try {
-      const parsed = parseCSV(ev.target.result);
-      if (parsed.length === 0) { showToast('データが見つかりません。', 3000); return; }
+      const parsed = parseCSV(text);
+      if (parsed.length === 0) { showToast('データが見つかりません。列名を確認してください。', 4000); return; }
       allData = parsed; isSample = false;
       const badge = document.getElementById('data-source-badge');
-      badge.textContent = `📁 ${file.name}`;
+      badge.textContent = `📁 ${file.name}（${parsed.length}件）`;
       badge.style.background = '#1a3a1a'; badge.style.color = '#8fbc8f';
       renderMarkers();
       if (document.getElementById('chart-panel').classList.contains('open')) drawChart();
       showToast(`✅ ${parsed.length}件 読み込みました`, 3000);
     } catch(err) { showToast('CSVの読み込みに失敗しました: ' + err.message, 4000); }
-  };
-  reader.readAsText(file, 'UTF-8');
+  });
   e.target.value = '';
 });
 
+function readCSVFile(file, encoding) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = ev => resolve(ev.target.result);
+    reader.onerror = reject;
+    reader.readAsText(file, encoding);
+  });
+}
+
+// 令和・平成・昭和 → 西暦変換
+function convertJapaneseDate(str) {
+  if (!str) return '';
+  // 「令和6年1月4日」→ 2024-01-04
+  const m = str.match(/([令平昭])[和成和]?(\d+)年(\d+)月(\d+)日/);
+  if (m) {
+    let base = 0;
+    if (m[1] === '令') base = 2018;
+    else if (m[1] === '平') base = 1988;
+    else if (m[1] === '昭') base = 1925;
+    const y = base + parseInt(m[2]);
+    const mo = String(m[3]).padStart(2,'0');
+    const d  = String(m[4]).padStart(2,'0');
+    return `${y}-${mo}-${d}`;
+  }
+  // すでにYYYY-MM-DD形式ならそのまま
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0,10);
+  return str;
+}
+
+// 状況テキストから目撃/痕跡を推定
+function inferType(situation) {
+  if (!situation) return '目撃';
+  if (/足跡|痕跡|糞|フン|ふん|爪跡|つめ跡|食べ跡|農作物|荒ら|掘っ|倒し/.test(situation)) return '痕跡';
+  return '目撃';
+}
+
 function parseCSV(text) {
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+  // 改行を含むフィールド（ダブルクォート内）を正しく分割するためにパース
+  const rows = parseCSVRows(text);
+  if (rows.length < 2) return [];
+  const headers = rows[0].map(h => h.trim());
+
   const colMap = {
     lat:  findCol(headers, ['緯度','lat','latitude','Latitude']),
     lng:  findCol(headers, ['経度','lng','lon','longitude','Longitude']),
-    date: findCol(headers, ['日付','発見日','目撃日','date','Date','発見年月日','目撃年月日']),
-    city: findCol(headers, ['市町村','市区町村','city','City','場所','所在地']),
+    date: findCol(headers, ['目撃(発見)年月日','発見年月日','目撃年月日','日付','発見日','目撃日','date','Date']),
+    city: findCol(headers, ['目撃(発見)場所','警察署','市町村','市区町村','場所','所在地','city']),
     type: findCol(headers, ['種別','情報種別','目撃種別','type','Type','区分']),
     count:findCol(headers, ['頭数','個体数','count','Count']),
     size: findCol(headers, ['体長','サイズ','size','Size']),
     situation: findCol(headers, ['状況','概要','備考','situation','description','内容']),
   };
-  return lines.slice(1).map(line => {
-    const cols = splitCSVLine(line);
-    const get = k => colMap[k] >= 0 ? (cols[colMap[k]]||'').replace(/"/g,'').trim() : '';
+
+  return rows.slice(1).map(cols => {
+    const get = k => colMap[k] >= 0 ? (cols[colMap[k]]||'').trim() : '';
+    const situation = get('situation');
+    const rawType   = get('type');
+    const type = rawType || inferType(situation);
+    // 場所は改行含む場合は最初の行（市名相当）を使う
+    const place = get('city').replace(/\r?\n[\s　]*/g, ' ').trim();
     return {
-      lat: parseFloat(get('lat'))||null, lng: parseFloat(get('lng'))||null,
-      date: get('date'), city: get('city'),
-      type: get('type')||'目撃', count: parseInt(get('count'))||0,
-      size: get('size'), situation: get('situation'),
+      lat:  parseFloat(get('lat')) || null,
+      lng:  parseFloat(get('lng')) || null,
+      date: convertJapaneseDate(get('date')),
+      city: place,
+      type,
+      count:    parseInt(get('count')) || 0,
+      size:     get('size'),
+      situation: situation.replace(/\r?\n/g,' ').trim(),
     };
   }).filter(d => d.lat && d.lng);
 }
+
+// 改行を含むCSVを正しくパース（RFC 4180準拠）
+function parseCSVRows(text) {
+  const rows = [];
+  let row = [], cur = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"' && text[i+1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') { inQ = false; }
+      else { cur += ch; }
+    } else {
+      if (ch === '"') { inQ = true; }
+      else if (ch === ',') { row.push(cur); cur = ''; }
+      else if (ch === '\n') {
+        row.push(cur); cur = '';
+        if (row.some(c => c.trim())) rows.push(row);
+        row = [];
+      } else if (ch === '\r') { /* skip */ }
+      else { cur += ch; }
+    }
+  }
+  if (cur || row.length) { row.push(cur); if (row.some(c=>c.trim())) rows.push(row); }
+  return rows;
+}
+
 function findCol(headers, candidates) {
   for (const c of candidates) {
     const idx = headers.findIndex(h => h.includes(c));
     if (idx >= 0) return idx;
   }
   return -1;
-}
-function splitCSVLine(line) {
-  const result = []; let cur = '', inQ = false;
-  for (const ch of line) {
-    if (ch === '"') { inQ = !inQ; }
-    else if (ch === ',' && !inQ) { result.push(cur); cur = ''; }
-    else { cur += ch; }
-  }
-  result.push(cur); return result;
 }
 
 // ============================================================
