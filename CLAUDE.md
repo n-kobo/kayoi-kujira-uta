@@ -4,28 +4,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-鯨唄（くじらうた）の自習用練習Webアプリ。先生のMP3音源をbase64でHTMLに埋め込み、ブラウザ単体でオフライン動作する。カラオケ採点風に音程・節回しを比較する。
+通鯨唄（かよいくじらうた）の自習用練習Webアプリ。山口県長門市・通地区に伝わる鯨唄「祝いめでた」を、先生のお手本MP3と自分の声（マイク）の音程・節回しを重ねて比較しながら練習できる、カラオケ採点風のツール。Vite + React + TypeScriptで実装し、`npm run build` で `dist/index.html` という単一HTMLファイルに出力する。MP3音源はbase64としてバンドルに埋め込まれ、Google Drive経由でスマホに転送してオフラインで動作させる運用は旧バージョンから変わらない。
 
-- **形式**: 単一HTMLファイル（フレームワーク・依存ライブラリなし）
-- **最新版**: `鯨唄練習アプリv9.html`（v7は参考用の旧バージョン）
-- **動作環境**: PC・スマホのブラウザ（Safari / Chrome）。スマホはGoogle Drive経由でHTMLを転送して使用
-
-## 開発方法
-
-ビルド・コンパイル・サーバー起動は不要。HTMLファイルをブラウザで直接開くだけで動作する。
+## 開発コマンド
 
 ```bash
-# ローカルで開く（macOS）
-open 鯨唄練習アプリv9.html
-
-# スマホで確認したい場合
-python3 -m http.server 8080
-# → http://localhost:8080/鯨唄練習アプリv9.html
+npm install       # 依存インストール
+npm run dev       # 開発サーバー起動（http://localhost:5173 等）
+npm run build     # tsc --noEmit の型チェック → vite build → dist/index.html を生成
+npm run preview   # ビルド成果物のプレビュー
+npm test          # vitest run（ユニットテスト一括実行）
+npm run test:watch
+npm run typecheck # tsc --noEmit のみ
 ```
 
-新バージョンを作るときは `v9.html` をコピーして `v10.html` などと命名する（上書きしない）。
+ビルド成果物は **`dist/index.html` の単一ファイル**（vite-plugin-singlefile使用）。MP3のbase64（数MB）もJSに内包されるため、このファイル1つをそのまま配布・オフライン利用できる。ビルド前に必ず型チェックとテストを通すこと。
 
-### GitHubへのpush
+## アーキテクチャ
+
+詳細な契約（各モジュールの型・関数シグネチャ・仕様）は **`docs/ARCHITECTURE.md` を正とする**。実装・レビュー・議論の際は必ずこのファイルを参照し、齟齬があればARCHITECTURE.mdの記述を優先する。
+
+依存方向は一方向のみ:
+
+```
+components → hooks → audio/storage → core
+```
+
+- `src/core/` — 純粋ロジック（ピッチ検出・採点・類似度計算など）。DOM/Web Audio APIに依存禁止、全関数ユニットテスト必須
+- `src/audio/` — Web Audio API / MediaDevicesラッパー（ブラウザ依存層）
+- `src/songs/` — 曲レジストリ。曲を増やすときはここだけ触る
+- `src/storage/` — localStorage永続化（練習記録）
+- `src/hooks/` — React カスタムフック。core/audioをUIに接続
+- `src/components/` — Reactコンポーネント。表示とイベントハンドリングのみ、ロジックを書かない
+
+## 曲の追加手順
+
+1. `src/songs/<song-id>/audio.b64` にMP3のbase64データを1行（改行なし）で置く
+2. `src/songs/<song-id>/index.ts` で `Song`型（`src/songs/types.ts`）を満たすオブジェクトを定義（`id`, `title`, `credit`, `audioBase64`, `lyrics`, 任意で `endSec` / `scoringDurationSec`）
+3. `src/songs/index.ts` の `songs` 配列に追加
+
+以上で曲選択UI・音声解析・採点すべてに自動対応する。参考実装は `src/songs/iwai-medeta/index.ts`。
+
+## 重要な制約
+
+- **iOS Safariで `fetch()` によるbase64 data URIの読み込みは禁止**。必ず `audio/base64.ts` の `b64ToArrayBuffer()` → `decodeAudioData()` の流れで処理すること
+- **UIの見た目**（文言・配色・レイアウト）は高齢の利用者を想定した旧版（`archive/鯨唄練習アプリv10.html`）を踏襲する。大きく変更しないこと。背景色 `#f5f4f0`、カード型UI、大きめフォントなどの基調は維持する
+- `src/core/` はブラウザAPI（DOM, Web Audio, localStorage等）に依存しない純粋関数のみ。テストしやすさと再利用性のため
+- 新規・変更したロジックには必ずテスト（Vitest）を書く。`core/`は境界値含め全関数、`storage/`はlocalStorageモック、コンポーネントは最低限のスモークテストでよい。音声API（AudioContext, getUserMedia）は自動テスト対象外（手動確認）
+
+## GitHubへのpush
 
 ローカルのgit remoteはプロキシ経由のため、直接pushすると403エラーになる。`GH_TOKEN` 環境変数を使ってremote URLを書き換えてからpushする。
 
@@ -34,96 +61,11 @@ git remote set-url origin "https://n-kobo:${GH_TOKEN}@github.com/n-kobo/kayoi-ku
 git push -u origin <branch-name>
 ```
 
-## アーキテクチャ
+## archive/ ディレクトリ
 
-### ファイル構造（1ファイル完結）
+`archive/` には旧バージョン（`鯨唄練習アプリv7.html` / `v9.html` / `v10.html` など、名前ベースでバージョン管理していた単一HTML群と旧仕様書）を保管している。**編集禁止**。UIの見た目や旧ロジックの参照用に読み取るのみとし、新しい実装は `src/` 側で行う。
 
-```
-<style>  CSSスタイル定義
-<body>   UIのHTML構造
-<script> 全ロジック（グローバル変数・関数）
-```
+## ドキュメント
 
-MP3音源は `const MP3_B64 = "..."` という巨大な1行の文字列としてHTMLに埋め込まれている（ファイルサイズの大半はこのbase64データ）。
-
-### 主要な関数とデータフロー
-
-```
-b64ToArrayBuffer()
-  base64文字列 → ArrayBuffer（fetchは使用禁止）
-  ↓
-window.onload
-  audio要素にBlob URLをセット（先生の音声を再生可能にする）
-
-analyzeTeacher()
-  先生音源のオフライン解析 → decodeAudioData()
-  ArrayBuffer → PCMデータ → autocorrelate()
-  各フレームの基本周波数を検出（自己相関法）
-  → teacherPitches[]   解析結果ピッチ配列（nullは無音）
-  → teacherMinF/MaxF   音域の自動検出（1〜99パーセンタイル ±8〜12%）
-
-startRecording()
-  マイク録音開始 + 先生音源を頭から再生
-  → updateLoop()
-      requestAnimationFrameで毎フレーム呼ばれる
-      → autocorrelate()  自分のリアルタイムピッチ検出
-      → scrollPos        refAudio.currentTime / teacherHopSec で同期
-      → drawScroll()     Canvasにグラフ描画
-
-stopRecording()
-  録音停止・sessionDataに保存
-
-showScore()
-  4項目採点（節回し40%・音量20%・継続20%・安定20%）
-```
-
-### グラフ描画（`drawScroll`）
-
-- Canvasはリサイズ時に `getCanvas()` で実寸に合わせる（Retina対応で `offsetWidth * 2`）
-- 表示範囲：全フレーム数の4%（`visFrames = total * 0.04`）
-- 現在位置縦線：画面左から22%（仕様書）または28%（v7実装）— v9を確認すること
-- 先生・自分の玉ともにEMA平滑化：`BALL_SMOOTH = 0.08`（小さいほど遅く安定）
-
-### グローバル状態変数
-
-| 変数 | 役割 |
-|------|------|
-| `teacherPitches` | 先生のピッチ配列（解析後にセット） |
-| `teacherHopSec` | フレーム間隔秒数（= hopSize / sampleRate） |
-| `teacherMinF/MaxF` | グラフY軸の音域範囲 |
-| `scrollPos` | 現在再生中のフレームインデックス |
-| `myPitches` | 録音中の自分のピッチ配列 |
-| `sessionData` | 録音停止後の採点用データ保存 |
-| `smoothTY/smoothMY` | 先生・自分の玉Y座標（EMA値） |
-
-## 重要な制約・注意点
-
-### iOSでの動作
-
-- `fetch()` でbase64 data URIを読もうとするとiOS Safariで失敗する。**必ず `b64ToArrayBuffer()` → `decodeAudioData()` の流れで処理する**
-- マイク許可ダイアログの対応が必要（エラーメッセージでユーザーに案内）
-
-### LYRICSの配置
-
-- `LYRICS` 配列（歌詞データ）は `const total = teacherPitches.length` が定義された後でのみ参照可能
-- `drawScroll` 内で `total` の定義より前に `LYRICS` を参照すると `Cannot access 'total' before initialization` エラーになる
-
-### MP3差し替え
-
-- `/tmp/song.b64` のbase64データを `MP3_B64` の値と置き換える
-
-## v7 と v9 の主な違い
-
-- v9はv7より約50行短くシンプルに整理されている
-- v9の `updateLoop` は `recentMyPitch` を使ったシンプルなキャッシュ方式
-- v7の `updateLoop` は `smoothLive()` で `LIVE_BUF=5` フレームの移動平均を使用
-- v9のhopSizeは512（v7より細かい）
-- フレームサイズ: 2048、ホップサイズ: 1024（仕様書）vs hopSize=512（v9実装）— コードを実際に確認すること
-
-## 今後の改善候補
-
-- 練習記録の永続化（localStorage）
-- 複数曲の切り替え
-- 歌詞タイミングの微調整機能
-- PWA化（ホーム画面アイコンからの起動）
-- 一致度判定アルゴリズムの改善（音程だけでなく節回しのパターンマッチング）
+- `docs/ARCHITECTURE.md` — エンジニア向けアーキテクチャ仕様（正）
+- `docs/設計書.html` — 非エンジニア（アプリ利用者）向けのやさしい設計書。ブラウザで直接開ける自己完結HTML
