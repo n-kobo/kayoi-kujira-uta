@@ -54,12 +54,14 @@ components → hooks → audio/storage → core
 
 ## GitHubへのpush
 
-ローカルのgit remoteはプロキシ経由のため、直接pushすると403エラーになる。`GH_TOKEN` 環境変数を使ってremote URLを書き換えてからpushする。
+ローカルのgit remoteはプロキシ経由のため、直接pushすると403エラーになる場合がある。まず通常の `git push -u origin <branch-name>` を試し、失敗したら `GH_TOKEN` 環境変数を使ってremote URLを書き換えてからpushする。
 
 ```bash
 git remote set-url origin "https://n-kobo:${GH_TOKEN}@github.com/n-kobo/kayoi-kujira-uta.git"
 git push -u origin <branch-name>
 ```
+
+それでも `GitHub access is not enabled for this session` という403が出る場合は、セッションのGitHub連携が読み取り専用になっている。https://github.com/settings/installations でClaude GitHub Appに本リポジトリへの書き込み権限（Contents: Read & write）が付与されているか確認が必要（Claude側の設定でGitHub連携を再接続するのも有効）。
 
 ## archive/ ディレクトリ
 

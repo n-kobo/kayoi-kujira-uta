@@ -51,10 +51,12 @@ describe('autocorrelate', () => {
 });
 
 describe('freqToNote', () => {
-  // freqToNote は 440Hz を基準(NOTES[0]='C')に半音単位で丸めるため、
-  // 一般的な音名（A=440Hz）とはずれる。旧実装と同じ丸め結果になることを確認する。
-  it('440Hz は基準音であり C を返す', () => {
-    expect(freqToNote(440)).toBe('C');
+  it('440Hz は A を返す（国際標準ピッチ）', () => {
+    expect(freqToNote(440)).toBe('A');
+  });
+
+  it('261.63Hz（中央ハ）は C を返す', () => {
+    expect(freqToNote(261.63)).toBe('C');
   });
 
   it('1オクターブ上（880Hz）でも同じ音名になる', () => {

@@ -68,7 +68,8 @@ function clampFreq(freq: number, cfg: AnalysisConfig): number | null {
  */
 export function freqToNote(freq: number | null): string | null {
   if (!freq || freq < 40 || freq > 3000) return null;
+  // 440Hz = A（NOTES[9]）。基準からの半音数に+9して音名表へ写像する
   const s = 12 * Math.log2(freq / 440);
-  const n = ((Math.round(s) % 12) + 12) % 12;
+  const n = (((Math.round(s) + 9) % 12) + 12) % 12;
   return NOTES[n];
 }
