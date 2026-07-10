@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>通鯨唄おけいこアプリ 設計書（やさしい版）</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem 1rem 4rem;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+    background: #f5f4f0;
+    color: #2c2c2a;
+    line-height: 1.9;
+    font-size: 17px;
+  }
+  .page {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  header.hero {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #d3d1c7;
+  }
+  header.hero .kicker {
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    color: #8a7f5e;
+    margin-bottom: 0.5rem;
+  }
+  header.hero h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+    color: #1a3a5c;
+  }
+  header.hero p {
+    font-size: 14px;
+    color: #5f5e5a;
+    margin: 0;
+  }
+  nav.toc {
+    background: #fff;
+    border: 1px solid #d3d1c7;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  nav.toc h2 {
+    font-size: 14px;
+    color: #8a7f5e;
+    margin: 0 0 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding-left: 1.4em;
+    font-size: 15px;
+  }
+  nav.toc li { margin-bottom: 0.35em; }
+  nav.toc a { color: #2c2c2a; text-decoration: none; border-bottom: 1px dotted #b0aea3; }
+  nav.toc a:hover { color: #378add; }
+
+  section {
+    background: #fff;
+    border: 1px solid #d3d1c7;
+    border-radius: 14px;
+    padding: 1.75rem 1.75rem 2rem;
+    margin-bottom: 1.75rem;
+  }
+  section h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a3a5c;
+    margin: 0 0 1rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6em;
+  }
+  section h2 .num {
+    font-family: Georgia, serif;
+    font-size: 15px;
+    background: #1a3a5c;
+    color: #fff;
+    border-radius: 50%;
+    width: 1.8em;
+    height: 1.8em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #378add;
+    margin: 1.5rem 0 0.6rem;
+  }
+  p { margin: 0 0 1em; }
+  ul, ol { padding-left: 1.4em; margin: 0 0 1em; }
+  li { margin-bottom: 0.4em; }
+
+  .note {
+    background: #f5f4f0;
+    border-left: 4px solid #378add;
+    border-radius: 6px;
+    padding: 0.8em 1em;
+    font-size: 14.5px;
+    color: #4a4944;
+    margin: 1em 0;
+  }
+  .note strong { color: #1a3a5c; }
+
+  .analogy {
+    background: #fdf8ee;
+    border: 1px dashed #cbb887;
+    border-radius: 8px;
+    padding: 0.9em 1.1em;
+    font-size: 14.5px;
+    margin: 1em 0;
+  }
+  .analogy::before {
+    content: "たとえるなら";
+    display: block;
+    font-size: 12px;
+    color: #8a7f5e;
+    font-weight: 600;
+    margin-bottom: 0.3em;
+    letter-spacing: 0.05em;
+  }
+
+  .diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin: 1.2rem 0;
+  }
+  .diagram .row {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .box {
+    flex: 1;
+    min-width: 130px;
+    background: #f5f4f0;
+    border: 1px solid #d3d1c7;
+    border-radius: 10px;
+    padding: 0.7em 0.9em;
+    font-size: 13.5px;
+  }
+  .box .box-title {
+    font-weight: 600;
+    color: #1a3a5c;
+    font-size: 14px;
+    margin-bottom: 0.3em;
+  }
+  .box.accent-song { border-color: #cbb887; background: #fdf8ee; }
+  .box.accent-audio { border-color: #93c5fd; background: #eef6ff; }
+  .box.accent-score { border-color: #9fd8bf; background: #eaf8f2; }
+  .box.accent-ui { border-color: #e7b6c9; background: #fdf0f4; }
+  .box.accent-store { border-color: #d3d1c7; background: #f0efe9; }
+  .arrow-down {
+    text-align: center;
+    color: #b0aea3;
+    font-size: 18px;
+    margin: -0.2rem 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14.5px;
+    margin: 1em 0;
+  }
+  th, td {
+    border: 1px solid #d3d1c7;
+    padding: 0.55em 0.7em;
+    text-align: left;
+  }
+  th {
+    background: #f5f4f0;
+    color: #5f5e5a;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  td.rank-S { color: #1d9e75; font-weight: 700; }
+  td.rank-A { color: #378add; font-weight: 700; }
+  td.rank-B { color: #ba7517; font-weight: 700; }
+  td.rank-C { color: #888780; font-weight: 700; }
+  td.rank-D { color: #d4537e; font-weight: 700; }
+
+  .prompt-box {
+    background: #12122a;
+    color: #fde68a;
+    border-radius: 10px;
+    padding: 1em 1.2em;
+    font-size: 14px;
+    line-height: 1.7;
+    margin: 1em 0;
+    white-space: pre-wrap;
+    font-family: "Hiragino Mincho ProN", serif;
+  }
+  .prompt-box::before {
+    content: "Claude への頼み方の例文";
+    display: block;
+    color: #93c5fd;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5em;
+  }
+
+  .spell {
+    background: #f5f4f0;
+    border: 1px solid #d3d1c7;
+    border-radius: 6px;
+    padding: 0.15em 0.5em;
+    font-family: "SFMono-Regular", Menlo, monospace;
+    font-size: 13.5px;
+    color: #a3401f;
+  }
+
+  .qa {
+    border-top: 1px solid #e8e7e3;
+    padding-top: 1em;
+    margin-top: 1em;
+  }
+  .qa:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  .qa .q {
+    font-weight: 600;
+    color: #1a3a5c;
+    margin-bottom: 0.4em;
+  }
+  .qa .q::before { content: "Q. "; color: #378add; }
+  .qa .a::before { content: "A. "; color: #d4537e; font-weight: 600; }
+
+  footer {
+    text-align: center;
+    font-size: 12.5px;
+    color: #8a8880;
+    margin-top: 2rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #1c1b18; color: #e6e3da; }
+    header.hero h1 { color: #a9c9ec; }
+    header.hero p, .qa .a { color: #b7b3a6; }
+    nav.toc, section { background: #262420; border-color: #45423a; }
+    nav.toc a { color: #e6e3da; border-color: #5c584c; }
+    section h2 { color: #a9c9ec; }
+    .note { background: #2c2a25; color: #d8d4c6; }
+    .analogy { background: #2b2716; border-color: #6b5c33; }
+    .box { background: #2c2a25; border-color: #45423a; color: #e6e3da; }
+    .box.accent-song { background: #2b2716; border-color: #6b5c33; }
+    .box.accent-audio { background: #1c2733; border-color: #3a5a80; }
+    .box.accent-score { background: #1b2b24; border-color: #3a6b53; }
+    .box.accent-ui { background: #2b1f26; border-color: #6b3a53; }
+    .box.accent-store { background: #262420; border-color: #45423a; }
+    th { background: #2c2a25; color: #b7b3a6; }
+    th, td { border-color: #45423a; }
+    .spell { background: #2c2a25; border-color: #45423a; color: #e2946f; }
+    footer { color: #8a8880; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="hero">
+    <div class="kicker">通鯨唄おけいこアプリ</div>
+    <h1>設計書（やさしい版）</h1>
+    <p>このアプリがどんな仕組みで動いているか、困ったとき・変えたいときに何をすればいいかをまとめたものです。</p>
+  </header>
+
+  <nav class="toc">
+    <h2>もくじ</h2>
+    <ol>
+      <li><a href="#ch1">このアプリは何をするもの？</a></li>
+      <li><a href="#ch2">アプリの中身はどうなっている？</a></li>
+      <li><a href="#ch3">声の高さをどうやって測っている？</a></li>
+      <li><a href="#ch4">採点の仕組み</a></li>
+      <li><a href="#ch5">新しい鯨唄（曲）を増やしたいとき</a></li>
+      <li><a href="#ch6">アプリを更新して使うまでの流れ</a></li>
+      <li><a href="#ch7">困ったときのQ&amp;A</a></li>
+    </ol>
+  </nav>
+
+  <section id="ch1">
+    <h2><span class="num">1</span>このアプリは何をするもの？</h2>
+    <p>
+      このアプリは、鯨唄「祝いめでた」を独りで練習するための道具です。先生の唄声（お手本）と、自分のスマホのマイクで拾った声を、同時にグラフの上に重ねて表示します。
+      録音が終わると、カラオケの採点機能のように点数とランクが出ます。
+    </p>
+    <div class="analogy">
+      カラオケボックスの採点機能を思い浮かべてください。あの機械は、あなたの声の高さや長さを、曲のお手本と比べて点数をつけていますね。
+      このアプリも同じ考え方で、「先生の声の高さの動き」と「あなたの声の高さの動き」を比べて、どれくらい似ているかを点数にしています。
+      違うのは、鯨唄には楽譜（決まった音程）がないので、「正解の音」ではなく「先生の節回しの形」に近いかどうかで採点するところです。
+    </div>
+    <p>
+      スマホでもパソコンでも、インターネットにつながなくても動きます。先生の音源（MP3）はアプリの中にあらかじめ埋め込まれているためです（くわしくは第2章）。
+    </p>
+  </section>
+
+  <section id="ch2">
+    <h2><span class="num">2</span>アプリの中身はどうなっている？</h2>
+    <p>アプリは大きく5つの部品でできています。それぞれの役割を図にすると、次のようになります。</p>
+    <div class="diagram">
+      <div class="row">
+        <div class="box accent-song">
+          <div class="box-title">① 曲データ</div>
+          先生の唄声（音声を文字の列にしたもの）と歌詞。曲を増やすときはここを追加する。
+        </div>
+      </div>
+      <div class="arrow-down">↓</div>
+      <div class="row">
+        <div class="box accent-audio">
+          <div class="box-title">② 音の解析</div>
+          先生の声・自分の声の「高さ」を読み取る仕組み（第3章）。
+        </div>
+      </div>
+      <div class="arrow-down">↓</div>
+      <div class="row">
+        <div class="box accent-ui">
+          <div class="box-title">③ 画面</div>
+          グラフ・ボタン・メーターなど、目に見える部分すべて。
+        </div>
+      </div>
+      <div class="arrow-down">↓</div>
+      <div class="row">
+        <div class="box accent-score">
+          <div class="box-title">④ 採点</div>
+          録音が終わったあと、4つの項目を計算して点数にする（第4章）。
+        </div>
+      </div>
+      <div class="arrow-down">↓</div>
+      <div class="row">
+        <div class="box accent-store">
+          <div class="box-title">⑤ 記録</div>
+          練習した日付と点数を、スマホ本体に保存しておく（次にアプリを開いても消えない）。
+        </div>
+      </div>
+    </div>
+    <div class="note">
+      <strong>ここが大事なところ</strong>: ①〜⑤の矢印は「一方通行」です。たとえば④の採点の仕組みが②の音の解析の中身を勝手に書き換えたりはしません。
+      それぞれの部品が自分の持ち場だけをきちんと担当しているので、「採点のルールだけ直したい」「曲だけ増やしたい」というお願いを、他の部分を壊さずにやりやすくなっています。
+    </div>
+    <h3>「base64（びーろくよん）」って何？</h3>
+    <p>
+      先生のMP3の音声ファイルは、アプリの中では「base64（びーろくよん）」という形の、とても長い文字の列として保存されています。
+    </p>
+    <div class="analogy">
+      写真を点字に置き換えるようなイメージです。点字にすれば紙の上の文字と同じ扱いで持ち運べますね。
+      base64も同じで、音声という「音」のデータを、アプリ（プログラムの文章）の中に一緒に書き込める「文字」の形に変換したものです。
+      アプリを開くときに、この文字の列をもう一度「音」に戻して再生しています。
+    </div>
+    <p>
+      この仕組みのおかげで、MP3ファイルを別に持ち歩かなくても、アプリのファイル1つだけでお手本の音声ごと持ち運べます。だからインターネットがない場所でも使えるのです。
+    </p>
+  </section>
+
+  <section id="ch3">
+    <h2><span class="num">3</span>声の高さをどうやって測っている？</h2>
+    <p>
+      アプリは「自己相関法（じこそうかんほう）」という方法で、声の高さ（音程）を測っています。
+    </p>
+    <div class="analogy">
+      縄跳びの縄を思い浮かべてください。声の波（音の振動）を紙に描いたグラフだとすると、そのグラフをコピーしてもう1枚重ね、少しだけ横にずらしていきます。
+      ずらす幅を変えながら「いちばんぴったり波の形が重なる」ところを探すと、その「ずらした幅」が、声が1回振動するのにかかった時間にあたります。
+      振動が速い（ずらす幅が短い）ほど声は高く、遅い（ずらす幅が長い）ほど声は低い、という関係になっています。
+    </div>
+    <p>
+      声を約23ミリ秒ごと（1秒間に約43回）に細かく区切って、区切りごとにこの測定をくり返しています。これによって、声の高さが時間とともにどう動いているかを、なめらかな線としてグラフに描けるようになっています。
+    </p>
+    <ul>
+      <li>声が小さすぎる（無音に近い）ときは「測れなかった」として扱われ、グラフの線は途切れます。</li>
+      <li>人の声として不自然に低すぎたり高すぎたりする音（40Hz未満、3000Hzを超える音）も無視します。</li>
+    </ul>
+    <p>
+      先生の音声はあらかじめこの方法で全体を解析しておき、自分の声は録音しながらリアルタイムで同じ方法で測定して、2つの線を同時にグラフへ流します。
+    </p>
+  </section>
+
+  <section id="ch4">
+    <h2><span class="num">4</span>採点の仕組み</h2>
+    <p>録音が終わると、次の4つの項目を計算して、重みをつけて合計し、0〜100点の総合点にします。</p>
+    <table>
+      <thead>
+        <tr><th>項目</th><th>重み</th><th>何を見ているか</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>節回しの近さ</td><td>40%</td><td>先生の声の高さの動きと、自分の声の高さの動きが、どれくらい似ているか</td></tr>
+        <tr><td>音量・強弱</td><td>20%</td><td>声がしっかりした大きさで出ているか</td></tr>
+        <tr><td>継続・伸び</td><td>20%</td><td>声を止めずに長く出し続けられているか（目安30秒）</td></tr>
+        <tr><td>声の安定</td><td>20%</td><td>声の高さが急にガクガク揺れていないか</td></tr>
+      </tbody>
+    </table>
+    <p>合計点に応じて、次のランクが表示されます。</p>
+    <table>
+      <thead>
+        <tr><th>ランク</th><th>点数の目安</th><th>表示されるメッセージ</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="rank-S">S</td><td>90点〜</td><td>完璧！先生の節回しそのまま！</td></tr>
+        <tr><td class="rank-A">A</td><td>78〜89点</td><td>上手い！節回しがよく合っている</td></tr>
+        <tr><td class="rank-B">B</td><td>65〜77点</td><td>だいぶ近づいてきた！あと少し</td></tr>
+        <tr><td class="rank-C">C</td><td>50〜64点</td><td>練習を重ねると形が見えてくる</td></tr>
+        <tr><td class="rank-D">D</td><td>〜49点</td><td>今日の第一歩！毎日少しずつ</td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      鯨唄には決まった正解の音程がないので、「音を外した・外していない」を厳しく見る採点ではありません。あくまで先生の声の動き方の「形」にどれだけ近づけたかを見る、練習の目安としてお使いください。
+    </div>
+  </section>
+
+  <section id="ch5">
+    <h2><span class="num">5</span>新しい鯨唄（曲）を増やしたいとき</h2>
+    <p>
+      「祝いめでた」以外の鯨唄も練習できるようにしたい場合、先生の新しいMP3音源と歌詞の文章があれば、Claudeにお願いするだけで追加できます。ご自身でプログラムのファイルをいじる必要はありません。
+    </p>
+    <p>用意していただくものは次の2つです。</p>
+    <ul>
+      <li>先生の唄声のMP3ファイル</li>
+      <li>歌詞の文章（できれば「何秒あたりでどの歌詞が流れるか」の目安。分からなければ「あとで調整する」でも大丈夫です）</li>
+    </ul>
+    <div class="prompt-box">「〇〇（曲名）」という鯨唄を新しく追加してください。
+MP3ファイルはこちらです（ファイルを添付、または保存場所を伝える）。
+先生の表記は「〇〇保存会」でお願いします。
+歌詞は次の通りです：
+（歌詞の文章を貼り付ける）
+何秒あたりで各行が流れるかはまだ分からないので、
+だいたいで仮に入れておいて、あとで一緒に調整させてください。</div>
+    <p>
+      お願いすると、Claudeが曲のデータをアプリの中に追加し、曲を選ぶメニューにも自動で反映されます。歌詞が流れるタイミングがずれていると感じたら、
+      「12秒のところの歌詞を15秒に直してください」のように、気づいたところをそのつど伝えていただければ微調整できます。
+    </p>
+  </section>
+
+  <section id="ch6">
+    <h2><span class="num">6</span>アプリを更新して使うまでの流れ</h2>
+    <p>
+      アプリの中身（採点のルールや画面のデザインなど）を直したあとは、「ビルド」という作業をして、スマホで開ける1つのファイルに組み立て直す必要があります。
+    </p>
+    <div class="analogy">
+      料理でいうと、下ごしらえした材料（プログラムの部品たち）を、最後にひとつのお弁当箱（1つのHTMLファイル）に詰め込み直す作業です。
+      詰め直さないと、スマホというお弁当箱を持っていく先（Google Drive経由での転送）に持っていけません。
+    </div>
+    <ol>
+      <li>
+        Claudeに「ビルドしてください」とお願いする、または呪文（コマンド）<span class="spell">npm run build</span> を実行してもらう。
+      </li>
+      <li>
+        すると <span class="spell">dist</span> というフォルダの中に <span class="spell">index.html</span> という1つのファイルができます。これが新しいアプリ本体です（先生のMP3も中に埋め込み済み）。
+      </li>
+      <li>
+        この <span class="spell">dist/index.html</span> を、いつもどおりGoogle Driveに置いて、スマホ側でGoogle Driveアプリから開けば、更新されたアプリが使えます。
+      </li>
+    </ol>
+    <div class="note">
+      <strong>呪文について</strong>: <span class="spell">npm run build</span> のような英数字の並びは、Claudeやパソコンに「これをやって」と伝えるための決まり文句（呪文）です。
+      意味を覚える必要はありません。「アプリを更新してスマホで使えるファイルにしてください」とClaudeに日本語でお願いすれば、代わりに呪文を実行してくれます。
+    </div>
+  </section>
+
+  <section id="ch7">
+    <h2><span class="num">7</span>困ったときのQ&amp;A</h2>
+
+    <div class="qa">
+      <div class="q">マイクの許可を聞かれたけれど、どうすればいい？</div>
+      <div class="a">「マイクへのアクセスを許可しますか」というポップアップが出たら、「許可」または「Allow」を選んでください。許可しないと、自分の声を測定できず録音ボタンが動きません。誤って「許可しない」を選んでしまった場合は、スマホの「設定」アプリからブラウザ（SafariやChrome）のマイク許可を後から変更できます。</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">iPhoneで音が出ない・声が出ない</div>
+      <div class="a">iPhoneのマナーモード（横のスイッチ）がオンになっていると音が鳴らないことがあります。まずマナーモードを確認してください。それでも鳴らない場合は、一度ページを閉じて開き直す、またはSafariの「履歴とWebサイトデータを消去」を試すと直ることがあります。</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">「先生の音程を解析する」のあと、なかなか進まない</div>
+      <div class="a">先生の音源（3分ほど）を細かく読み取っているため、機種によっては数秒〜十数秒かかります。進み具合（%）が表示されている間は正常に動いていますので、そのままお待ちください。</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">採点の点数がいつも低い気がする</div>
+      <div class="a">声が小さいと「音量」の項目が低くなりやすく、途中で声が途切れると「継続・伸び」も下がります。マイクに近い位置で、最後まで声を止めずに歌ってみてください。それでも気になる場合は、採点の重みや基準をClaudeに相談して調整できます。</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">練習の記録が消えてしまった</div>
+      <div class="a">練習記録はスマホ（ブラウザ）の中に保存されています。ブラウザの「閲覧履歴・データを消去」を行うと、この記録も一緒に消えてしまうことがあります。消去する前にバックアップを取りたい場合はClaudeに相談してください。</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">アプリの見た目や採点のルールを変えたい</div>
+      <div class="a">「ここをこう変えてほしい」と日本語でClaudeにお願いすれば大丈夫です。たとえば「採点の甘さを少し上げてほしい」「歌詞の文字をもう少し大きくしてほしい」のように、具体的にどうしたいかを伝えてください。</div>
+    </div>
+
+  </section>
+
+  <footer>
+    通鯨唄おけいこアプリ 設計書（やさしい版） — この文書は docs/設計書.html として保存されています。
+  </footer>
+
+</div>
+</body>
+</html>
