@@ -52,17 +52,6 @@ components → hooks → audio/storage → core
 - `src/core/` はブラウザAPI（DOM, Web Audio, localStorage等）に依存しない純粋関数のみ。テストしやすさと再利用性のため
 - 新規・変更したロジックには必ずテスト（Vitest）を書く。`core/`は境界値含め全関数、`storage/`はlocalStorageモック、コンポーネントは最低限のスモークテストでよい。音声API（AudioContext, getUserMedia）は自動テスト対象外（手動確認）
 
-## GitHubへのpush
-
-ローカルのgit remoteはプロキシ経由のため、直接pushすると403エラーになる場合がある。まず通常の `git push -u origin <branch-name>` を試し、失敗したら `GH_TOKEN` 環境変数を使ってremote URLを書き換えてからpushする。
-
-```bash
-git remote set-url origin "https://n-kobo:${GH_TOKEN}@github.com/n-kobo/kayoi-kujira-uta.git"
-git push -u origin <branch-name>
-```
-
-それでも `GitHub access is not enabled for this session` という403が出る場合は、セッションのGitHub連携が読み取り専用になっている。https://github.com/settings/installations でClaude GitHub Appに本リポジトリへの書き込み権限（Contents: Read & write）が付与されているか確認が必要（Claude側の設定でGitHub連携を再接続するのも有効）。
-
 ## archive/ ディレクトリ
 
 `archive/` には旧バージョン（`鯨唄練習アプリv7.html` / `v9.html` / `v10.html` など、名前ベースでバージョン管理していた単一HTML群と旧仕様書）を保管している。**編集禁止**。UIの見た目や旧ロジックの参照用に読み取るのみとし、新しい実装は `src/` 側で行う。
